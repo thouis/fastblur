@@ -25,9 +25,9 @@ void local_statistics(Mat &image_in, int windowsize, Mat &mean, Mat &var, Mat de
 void dog_2_50(const Mat &in, Mat &out)
 {
     Mat blur_2, blur_50, diff;
-    cilk_spawn GaussianBlur(in, blur_2, Size(0, 0), 2);
-    cilk_spawn GaussianBlur(in, blur_50, Size(0, 0), 50);
-    cilk_sync;
+    // Running these in parallel threads is slower
+    GaussianBlur(in, blur_2, Size(0, 0), 2);
+    GaussianBlur(in, blur_50, Size(0, 0), 50);
     subtract(blur_2, blur_50, diff, noArray(), CV_16S);
     diff.convertTo(out, CV_8U, 0.5, 128);
 }
