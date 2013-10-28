@@ -24,6 +24,7 @@
  * If the preprocessing symbol \c NUM_SINGLE is defined, then num is defined
  * as a float (i.e., single precision).  Otherwise, num is a double. 
  */
+#define NUM_SINGLE
 #ifdef NUM_SINGLE
 typedef float num;
 #else
