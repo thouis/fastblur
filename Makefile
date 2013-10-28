@@ -6,13 +6,17 @@
 # Set the flags needed for linking with fftw3 and fftw3f.
 LDFFTW3=-lfftw3 -lfftw3f
 
-# Set this line to compute in single precision instead of double precision
-NUM=-DNUM_SINGLE
+# needed for building the fastblur testing program
+OPENCV=/usr/local/opencv-clang
+
+# paths for Ray's machine
+STDCPATH=/Users/thouis/homebrew/lib/llvm-3.3/lib/c++/v1
 
 # Make settings
-SHELL=/bin/sh
-CFLAGS=-O3 -g -ansi -pedantic -Wall -Wextra $(NUM)
+CFLAGS=-O3 -g -ansi -pedantic -Wall -Wextra
 LDLIBS=-lm $(LDFFTW3)
+
+
 
 SOURCES=strategy_gaussian_conv.c \
 gaussian_conv_fir.c gaussian_conv_dct.c gaussian_conv_am.c \
@@ -33,3 +37,9 @@ all: libgaussian.a
 libgaussian.a: $(OBJECTS)
 	ar cru $@ $^
 	ranlib $@
+
+fastblur.o: fastblur.cpp
+	$(CXX) -fcilkplus $(CFLAGS) -I$(OPENCV)/include -I$(STDCPATH) -c $^ 
+
+fastblur: fastblur.o libgaussian.a
+	$(CXX) -o $@ $^ $(LDFLAGS) -L$(OPENCV)/lib -lgaussian -lopencv_highgui -lopencv_imgproc -lopencv_core -lcilkrts -lc++
