@@ -81,13 +81,14 @@ void init_recursive_filter(num *dest, const num *src, long N, long stride,
     const num *b, int p, const num *a, int q, 
     num sum, num tol, long max_iter)
 {
+    if (max_iter <= 0) max_iter=1;
     num h[MAX_Q + 1];
     long n;
     int m;
     
     assert(dest && src && N > 0 && stride != 0 
         && b && p >= 0 && a && 0 < q && q <= MAX_Q
-        && tol > 0 && max_iter > 0);
+        && tol >= 0 && max_iter > 0);
     
     /* Compute the first q taps of the impulse response, h_0, ..., h_{q-1} */
     recursive_filter_impulse(h, q, b, p, a, q);

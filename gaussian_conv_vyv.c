@@ -25,7 +25,7 @@
 #include "invert_matrix.h"
 #include "gaussian_short_conv.h"
 #include "gaussian_conv_vyv.h"
-
+#include <cilk/cilk.h>
 #include <stdio.h>
 
 /** \brief Number of newton iterations used to determine q */
@@ -164,8 +164,7 @@ void vyv_precomp(vyv_coeffs *c, double sigma, int K, num tol)
     double A[VYV_MAX_K * VYV_MAX_K], inv_A[VYV_MAX_K * VYV_MAX_K];
     int i, j, matrix_size;
     
-    assert(c && sigma > 0 && VYV_VALID_K(K) && tol > 0);
-    
+    assert(c && sigma > 0 && VYV_VALID_K(K) && tol >= 0);
     /* Initial estimate of q */
     q = sigma / 2;
     /* Compute accurate value of q using Newton's method */
@@ -220,7 +219,7 @@ void vyv_gaussian_conv(vyv_coeffs c,
     const long stride_4 = stride * 4;
     const long stride_5 = stride * 5;
     const long stride_N = stride * N;
-    num q[VYV_MAX_K];    
+    num q[VYV_MAX_K];
     long i;
     int m, n;
     
@@ -241,14 +240,25 @@ void vyv_gaussian_conv(vyv_coeffs c,
     /* Apply causal recursive filter on samples n = K,...,N-1 */
     switch(c.K)
     {
-    case 3:        
-        for(i = stride_3; i < stride_N; i += stride)
-            dest[i] = c.filter[0] * src[i] 
-                    - c.filter[1] * dest[i - stride] 
-                    - c.filter[2] * dest[i - stride_2] 
-                    - c.filter[3] * dest[i - stride_3];
+    case 3:
+        for(i = stride_3; i < stride_N-2*stride; i += 2*stride) {
+              dest[i]   =        c.filter[0]*src[i] - (c.filter[1] * dest[i - stride] +
+                               c.filter[2] * dest[i - stride_2] +
+                               c.filter[3] * dest[i - stride_3]);
+              dest[i + stride]   = c.filter[0]*src[i+stride] - (c.filter[1] * dest[i] +
+                               c.filter[2] * dest[i - stride] +
+                               c.filter[3] * dest[i - stride_2]);
+
+        }
+        for(; i < stride_N; i += stride) {
+              dest[i]   =        c.filter[0]*src[i] - (c.filter[1] * dest[i - stride] +
+                               c.filter[2] * dest[i - stride_2] +
+                               c.filter[3] * dest[i - stride_3]);
+        }
+
         break;
     case 4:
+        printf("case 4\n");
         for(i = stride_4; i < stride_N; i += stride)
             dest[i] = c.filter[0] * src[i] 
                     - c.filter[1] * dest[i - stride] 
@@ -257,6 +267,7 @@ void vyv_gaussian_conv(vyv_coeffs c,
                     - c.filter[4] * dest[i - stride_4];
         break;
     case 5:
+        printf("case 5\n");
         for(i = stride_5; i < stride_N; i += stride)
             dest[i] = c.filter[0] * src[i] 
                     - c.filter[1] * dest[i - stride] 
@@ -286,11 +297,26 @@ void vyv_gaussian_conv(vyv_coeffs c,
     switch(c.K)
     {
     case 3:
-        for(i = stride_N - stride_4; i >= 0; i -= stride)
-            dest[i] = c.filter[0] * dest[i]
+
+        for(i = stride_N - stride_4; i >= 2*stride; i -= 2*stride){
+             dest[i] = c.filter[0] * dest[i]
                     - c.filter[1] * dest[i + stride]
                     - c.filter[2] * dest[i + stride_2]
                     - c.filter[3] * dest[i + stride_3];
+
+             dest[i - stride] = c.filter[0] * dest[i - stride]
+                    - c.filter[1] * dest[i]
+                    - c.filter[2] * dest[i + stride]
+                    - c.filter[3] * dest[i + stride_2];
+
+        }
+        for(; i >= 0; i -= stride){
+             dest[i] = c.filter[0] * dest[i]
+                    - c.filter[1] * dest[i + stride]
+                    - c.filter[2] * dest[i + stride_2]
+                    - c.filter[3] * dest[i + stride_3];
+        }
+
         break;
     case 4:
         for(i = stride_N - stride_5; i >= 0; i -= stride)

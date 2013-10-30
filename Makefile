@@ -10,13 +10,14 @@ LDFFTW3=-lfftw3 -lfftw3f
 OPENCV=/usr/local/opencv-clang
 
 # paths for Ray's machine
-STDCPATH=/Users/thouis/homebrew/lib/llvm-3.3/lib/c++/v1
+#STDCPATH=/Users/thouis/homebrew/lib/llvm-3.3/lib/c++/v1
 
 # Make settings
-CFLAGS=-O3 -g -ansi -pedantic -Wall -Wextra
+CFLAGS=-O3 -gdwarf-2 -ansi -pedantic -Wall -Wextra -fcilkplus 
 LDLIBS=-lm $(LDFFTW3)
 
-
+CC = gcc
+CXX = g++
 
 SOURCES=strategy_gaussian_conv.c \
 gaussian_conv_fir.c gaussian_conv_dct.c gaussian_conv_am.c \
@@ -39,7 +40,11 @@ libgaussian.a: $(OBJECTS)
 	ranlib $@
 
 fastblur.o: fastblur.cpp
-	$(CXX) -fcilkplus $(CFLAGS) -I$(OPENCV)/include -I$(STDCPATH) -c $^ 
+	$(CXX) -fcilkplus $(CFLAGS) -I$(OPENCV)/include -c $^ 
 
 fastblur: fastblur.o libgaussian.a
-	$(CXX) -o $@ $^ $(LDFLAGS) -L$(OPENCV)/lib -lgaussian -lopencv_highgui -lopencv_imgproc -lopencv_core -lcilkrts -lc++
+	$(CXX) -o $@ $^ $(LDFLAGS) -L$(OPENCV)/lib -lgaussian -lopencv_highgui -lopencv_imgproc -lopencv_core -lcilkrts 
+
+clean:
+	rm *.o
+	rm fastblur
