@@ -53,7 +53,6 @@ float* vyv_blur(const Mat &in, double sigma)
     vyv_coeffs c;
     int K = 3;
     double tol = 1e-2;
-    //out.create(in.size(), in.type());
     vyv_precomp(&c, sigma, K, tol);
 
     float* row_major = Mat_to_Row_Major<float>(in);
@@ -110,10 +109,10 @@ int main(int argc, char **argv)
 
     cpu_begin = clock();
     gettimeofday(&wall_start, NULL);
-    /*for (int i = 0; i < iters; i++) {
+    for (int i = 0; i < iters; i++) {
         Mat tmp;
         dog_2_50(im, tmp);
-    }*/
+    }
     cpu_end = clock();
     gettimeofday(&wall_end, NULL);
     cpu_secs = (double)(cpu_end - cpu_begin) / CLOCKS_PER_SEC;
