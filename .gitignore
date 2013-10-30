@@ -1,0 +1,5 @@
+*.o
+fastblur
+*.cvdata
+*.data
+*.a
