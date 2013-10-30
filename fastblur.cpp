@@ -56,12 +56,12 @@ float* transpose (float* row_major, int rows, int cols) {
     return column_major;
 }
 
-Mat vyv_blur(const Mat &in, Mat &out, double sigma)
+float* vyv_blur(const Mat &in, double sigma)
 {
     vyv_coeffs c;
     int K = 3;
     double tol = 1e-2;
-    out.create(in.size(), in.type());
+    //out.create(in.size(), in.type());
     vyv_precomp(&c, sigma, K, tol);
 
     float* row_major = Mat_to_Row_Major(in);
@@ -79,28 +79,44 @@ Mat vyv_blur(const Mat &in, Mat &out, double sigma)
     float* column_major = transpose(row_major, in.rows, in.cols);
 
     /* Blur cols in place */
-    cilk_for (int i = 0; i < out.cols; i++) {
-        float* p = &(column_major[i*out.rows]);
-        Mat tmp(in.rows, 1, CV_32F, p);
+    cilk_for (int i = 0; i < in.cols; i++) {
+        float* p = &(column_major[i*in.rows]);
+        //Mat tmp(in.rows, 1, CV_32F, p);
         vyv_gaussian_conv(c, p, p, in.rows, 1);
-        tmp.convertTo(out.col(i), out.type());
+        //tmp.convertTo(out.col(i), out.type());
     }
     free(row_major);
+    row_major = transpose(column_major, in.cols, in.rows);
     free(column_major);
-    return out;
+    return row_major;
+}
+
+float* subtract_arrays(float* left, float* right, int size) {
+  for (int i = 0; i < size; i++) {
+    left[i] -= right[i];
+  }
+  free(right);
+  return left;
 }
 
 void dog_2_50_vyv(const Mat &in, Mat &out)
 {
     out.create(in.size(), in.type());
 
-    Mat blur_2, blur_50, diff;
+    float* blur_2;
+    float* blur_50;
+    float* diff;
 
-    blur_2=vyv_blur(in, blur_2, 2.0);
-    blur_50=vyv_blur(in, blur_50, 50.0);
-    subtract(blur_2, blur_50, diff, noArray(), CV_16S);
+    blur_2=vyv_blur(in, 2.0);
+    blur_50=vyv_blur(in, 50.0);
 
-    diff.convertTo(out, CV_8U, 0.5, 128);
+    diff = subtract_arrays(blur_2, blur_50, in.cols*in.rows);
+
+    //subtract(blur_2, blur_50, diff, noArray(), CV_16S);
+
+    Mat tmp = Mat(in.rows, in.cols, CV_32F, diff);
+    tmp.convertTo(out, CV_8U, 0.5, 128);
+    //diff.convertTo(out, CV_8U, 0.5, 128);
 }
 
 int main(int argc, char **argv)
