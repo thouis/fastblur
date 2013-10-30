@@ -13,7 +13,7 @@ OPENCV=/usr/local/opencv-clang
 #STDCPATH=/Users/thouis/homebrew/lib/llvm-3.3/lib/c++/v1
 
 # Make settings
-CFLAGS=-O3 -gdwarf-2 -ansi -pedantic -Wall -Wextra -fcilkplus 
+CFLAGS=-O3 -gdwarf-2 -ansi -pedantic -Wall -Wextra -fcilkplus
 LDLIBS=-lm $(LDFFTW3)
 
 CC = gcc
@@ -27,7 +27,7 @@ gaussian_conv_sii.c gaussian_short_conv.c \
 filter_util.c erfc_cody.c inverfc_acklam.c invert_matrix.c basic.c
 
 OBJECTS=$(SOURCES:.c=.o)
-.SUFFIXES: .c .o
+.SUFFIXES: .c .o .h
 .PHONY: all clean rebuild srcdoc dist dist-zip dist-xz
 
 all: libgaussian.a

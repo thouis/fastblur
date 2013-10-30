@@ -9,11 +9,13 @@
 #include <sys/time.h>
 #include <time.h>
 
+#include "parallel_utils.h"
 using namespace cv;
 using namespace std;
 
 #include <cilk/cilk.h>
 #include <cilk/cilk_api.h>
+
 
 extern "C" {
 #include "gaussian_conv_vyv.h"
@@ -32,28 +34,18 @@ void dog_2_50(const Mat &in, Mat &out)
     diff.convertTo(out, CV_8U, 0.5, 128);
 }
 
-float* Mat_to_Row_Major (const Mat& in) {
-    float* row_major = (float*) malloc(sizeof(float) * in.rows * in.cols);
+template<typename T>
+T* Mat_to_Row_Major (const Mat& in) {
+    T* row_major = (T*) malloc(sizeof(T) * in.rows * in.cols);
     cilk_for (int row = 0; row < in.rows; row++) {
         Mat tmp2;
         in.row(row).convertTo(tmp2, CV_32F);
-        float *ptemp = (float *) tmp2.ptr();
+        T *ptemp = (T *) tmp2.ptr();
         for (int j = 0; j < in.cols; j++) {
           row_major[row*in.cols + j] = ptemp[j];
         }
     }
     return row_major;
-}
-
-float* transpose (float* row_major, int rows, int cols) {
-    float* column_major = (float*) malloc(sizeof(float) * rows * cols);
-
-    cilk_for (int col = 0; col < cols; col++) {
-        for (int j = 0; j < rows; j++) {
-          column_major[col*rows + j] = row_major[j*cols + col];
-        }
-    }
-    return column_major;
 }
 
 float* vyv_blur(const Mat &in, double sigma)
@@ -64,16 +56,12 @@ float* vyv_blur(const Mat &in, double sigma)
     //out.create(in.size(), in.type());
     vyv_precomp(&c, sigma, K, tol);
 
-    float* row_major = Mat_to_Row_Major(in);
+    float* row_major = Mat_to_Row_Major<float>(in);
 
     /* Blur rows, store in out */
     cilk_for (int i = 0; i < in.rows; i++) {
-        /*Mat tmp;
-        in.row(i).convertTo(tmp, CV_32F);
-        float *p = (float *) tmp.ptr();*/
         float *p = &(row_major[i*in.cols]);
         vyv_gaussian_conv(c, p, p, in.cols, 1);
-        //tmp.convertTo(out.row(i), in.type());
     }
 
     float* column_major = transpose(row_major, in.rows, in.cols);
@@ -81,22 +69,12 @@ float* vyv_blur(const Mat &in, double sigma)
     /* Blur cols in place */
     cilk_for (int i = 0; i < in.cols; i++) {
         float* p = &(column_major[i*in.rows]);
-        //Mat tmp(in.rows, 1, CV_32F, p);
         vyv_gaussian_conv(c, p, p, in.rows, 1);
-        //tmp.convertTo(out.col(i), out.type());
     }
     free(row_major);
     row_major = transpose(column_major, in.cols, in.rows);
     free(column_major);
     return row_major;
-}
-
-float* subtract_arrays(float* left, float* right, int size) {
-  for (int i = 0; i < size; i++) {
-    left[i] -= right[i];
-  }
-  free(right);
-  return left;
 }
 
 void dog_2_50_vyv(const Mat &in, Mat &out)
@@ -107,16 +85,13 @@ void dog_2_50_vyv(const Mat &in, Mat &out)
     float* blur_50;
     float* diff;
 
-    blur_2=vyv_blur(in, 2.0);
-    blur_50=vyv_blur(in, 50.0);
-
-    diff = subtract_arrays(blur_2, blur_50, in.cols*in.rows);
-
-    //subtract(blur_2, blur_50, diff, noArray(), CV_16S);
+    blur_2 = vyv_blur(in, 2.0);
+    blur_50 = vyv_blur(in, 50.0);
+    diff = reduce_arrays_sub(blur_2, blur_50, in.cols*in.rows);
 
     Mat tmp = Mat(in.rows, in.cols, CV_32F, diff);
     tmp.convertTo(out, CV_8U, 0.5, 128);
-    //diff.convertTo(out, CV_8U, 0.5, 128);
+    free(diff);
 }
 
 int main(int argc, char **argv)
@@ -132,8 +107,7 @@ int main(int argc, char **argv)
     clock_t cpu_begin, cpu_end;
     struct timeval wall_start, wall_end;
     double cpu_secs, wall_secs;
-    
-    
+
     cpu_begin = clock();
     gettimeofday(&wall_start, NULL);
     /*for (int i = 0; i < iters; i++) {
