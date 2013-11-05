@@ -96,7 +96,14 @@ void dog_2_50_vyv(const Mat &in, Mat &out)
 int main(int argc, char **argv)
 {
     int iters = 200;
+/*
+    int* testing = (int*) calloc(25, sizeof(int));
 
+    for (int i = 0; i < 25; i++) {
+      testing[i] = i;
+    }*/
+    //int* transposed = transpose<int>(testing, 5, 5);
+    //assert(false);
     /* Read input, convert to grayscale */
     Mat im;
     im = imread(argv[1], 0);
@@ -109,10 +116,10 @@ int main(int argc, char **argv)
 
     cpu_begin = clock();
     gettimeofday(&wall_start, NULL);
-    for (int i = 0; i < iters; i++) {
+    /*for (int i = 0; i < iters; i++) {
         Mat tmp;
         dog_2_50(im, tmp);
-    }
+    }*/
     cpu_end = clock();
     gettimeofday(&wall_end, NULL);
     cpu_secs = (double)(cpu_end - cpu_begin) / CLOCKS_PER_SEC;
